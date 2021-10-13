@@ -8,41 +8,68 @@ from dask.distributed import Client, progress
 from dask import delayed
 import glob
 
-def parse_data(file):
-    #if self._debug:
-    #    print(file)
-
-    xml_file = open(file)
+def xml_file_to_data_dict(file_name):
+    xml_file = open(file_name)
     data_dict = xmltodict.parse(xml_file.read(),
                                 dict_constructor=dict)
     xml_file.close()
-    temp = data_dict.get('times')
+    return data_dict
+
+def parse_data(file_name):
+    raise NotImplementedError('A more specific parser is needed')
+
+def get_country(file_name):
+    split = file_name.split('/')
+    return split[-2]
+
+def parse_general_data(file_name, key1, key2):
+    #if self._debug:
+    #    print(file)
+
+    data_dict = xml_file_to_data_dict(file_name)
+    temp = data_dict.get(key1)
+
     if not temp:
         return []
 
-    temp = temp.get('showtime')
+    temp = temp.get(key2)
     if not temp:
         return []
 
+    country = get_country(file_name)
+    for t in temp:
+        t['country'] = country
     return temp
+
+def parse_showings_data(file_name):
+    return parse_general_data(file_name, 'times', 'showtime')
+
+def parse_movies_data(file_name):
+    return parse_general_data(file_name, 'movies', 'movie')
+
+def parse_theaters_data(file_name):
+    return parse_general_data(file_name, 'houses', 'theater')
 
 class BagReader:
     DEFAULT_CPUS = 4
+    PARSER = "parse_data"
+    FILE_PATTERN = None
 
-    def __init__(self, pattern):
-        self.pattern = pattern
+    def __init__(self, directory_pattern):
+        if not self.FILE_PATTERN:
+            raise NotImplementedError('A file pattern is needed')
+
+        self.pattern = "{}/{}".format(directory_pattern,
+                                      self.FILE_PATTERN)
+        self.initialize_properties()
+
+    def initialize_properties(self):
+        self._files = None
         self._client = None
         self._bag = None
         self._movie_ids = None
         self._number_of_workers = None
-
         self._debug = False
-
-    def demo(self):
-        b = self.bag
-
-        num_movies = len(set(b.map(lambda record: record['movie_id']).compute()))
-        print('Number of movies: {}'.format(num_movies))
 
     @property
     def number_of_workers(self):
@@ -70,8 +97,18 @@ class BagReader:
 
         return self._client
 
-    def debug(true_false):
-        self._debug = true_false
+    # TODO: add setter
+    @property
+    def debug():
+        return self._debug
+
+    @property
+    def files(self):
+        if self._files:
+            return self._files
+
+        self._files = glob.glob(self.pattern)
+        return self._files
 
     @property
     def bag(self):
@@ -79,8 +116,9 @@ class BagReader:
             return self._bag
 
         self.client
-        files = glob.glob(self.pattern)
-        delayed_files = [delayed(parse_data)(fn) for fn in files]
+
+        parser = eval(self.PARSER)
+        delayed_files = [delayed(parser)(fn) for fn in self.files]
         self._bag = db.from_delayed(delayed_files)
         return self._bag
 
@@ -101,9 +139,6 @@ class BagReader:
             list(set(self.bag().map(mapping).compute()))
         return self._movie_ids
 
-#    def max_movies(self, topk):
-        
-
     @property
     def num_movies(self):
         return len(self.movie_ids())
@@ -111,9 +146,19 @@ class BagReader:
     def shutdown(self):
         self.client.close()
 
-class MovieReader(BagReader):
-    pass
+class ShowingsReader(BagReader):
+    PARSER = "parse_showings_data"
+    FILE_PATTERN = "*S.XML"
+
+class MoviesReader(BagReader):
+    PARSER = "parse_movies_data"
+    FILE_PATTERN = "*I.XML"
+
+class TheatersReader(BagReader):
+    # This Canadian would prefer "Theatres
+    # (but we stay consistent with the data)
+    PARSER = "parse_theaters_data"
+    FILE_PATTERN = "*T.XML"
 
 if __name__ == "__main__":
     movie_reader = MovieReader('data/*/*/*S.XML')
-    
