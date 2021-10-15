@@ -23,9 +23,6 @@ def get_country(file_name):
     return split[-2]
 
 def parse_general_data(file_name, key1, key2):
-    #if self._debug:
-    #    print(file)
-
     data_dict = xml_file_to_data_dict(file_name)
     temp = data_dict.get(key1)
 
@@ -36,18 +33,28 @@ def parse_general_data(file_name, key1, key2):
     if not temp:
         return []
 
+    if type(temp) != list:
+        temp = [temp]
+
     country = get_country(file_name)
     for t in temp:
         t['country'] = country
+        t['source_xml'] = file_name
     return temp
 
 def parse_showings_data(file_name):
+    # DEBUG
+    # print(file_name)
     return parse_general_data(file_name, 'times', 'showtime')
 
 def parse_movies_data(file_name):
+    # DEBUG
+    # print(file_name)
     return parse_general_data(file_name, 'movies', 'movie')
 
 def parse_theaters_data(file_name):
+    # DEBUG
+    # print(file_name)
     return parse_general_data(file_name, 'houses', 'theater')
 
 class BagReader:
@@ -90,8 +97,11 @@ class BagReader:
             self._client = client
             return
 
+        scratch = os.environ.get('SLURM_TMPDIR', os.getcwd()) + '/dask-worker-space'
         self._client = Client(n_workers=self.number_of_workers,
-                              threads_per_worker=1)
+                              threads_per_worker=1,
+                              dashboard_address=None,
+                              local_directory=scratch)
         if self._debug:
             print(self._client)
 
