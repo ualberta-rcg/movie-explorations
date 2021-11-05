@@ -62,12 +62,13 @@ class BagReader:
     PARSER = "parse_data"
     FILE_PATTERN = None
 
-    def __init__(self, directory_pattern):
+    def __init__(self, directory_pattern, is_xml=False):
         if not self.FILE_PATTERN:
             raise NotImplementedError('A file pattern is needed')
 
         self.pattern = "{}/{}".format(directory_pattern,
                                       self.FILE_PATTERN)
+        self.is_xml = is_xml
         self.initialize_properties()
 
     def initialize_properties(self):
@@ -127,9 +128,19 @@ class BagReader:
 
         self.client
 
+        if self.is_xml:
+            return self.xml_bag()
+
+        return self.json_bag()
+
+    def xml_bag(self):
         parser = eval(self.PARSER)
         delayed_files = [delayed(parser)(fn) for fn in self.files]
         self._bag = db.from_delayed(delayed_files)
+        return self._bag
+
+    def json_bag(self):
+        self._bag = db.read_text(self.pattern).map(json.loads)
         return self._bag
 
     @property
@@ -158,17 +169,17 @@ class BagReader:
 
 class ShowingsReader(BagReader):
     PARSER = "parse_showings_data"
-    FILE_PATTERN = "*S.XML"
+    FILE_PATTERN = "*S.*"
 
 class MoviesReader(BagReader):
     PARSER = "parse_movies_data"
-    FILE_PATTERN = "*I.XML"
+    FILE_PATTERN = "*I.*"
 
 class TheatersReader(BagReader):
     # This Canadian would prefer "Theatres
     # (but we stay consistent with the data)
     PARSER = "parse_theaters_data"
-    FILE_PATTERN = "*T.XML"
+    FILE_PATTERN = "*T.*"
 
 if __name__ == "__main__":
-    movie_reader = MovieReader('data/*/*/*S.XML')
+    movie_reader = MovieReader('data/*/*/*S.*')
