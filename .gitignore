@@ -1,6 +1,9 @@
 data
 venv
 VENV
+tmp
+movies_*.tar*
+task-list.txt
 __pycache__
 dask-worker-space
 .ipynb_checkpoints
