@@ -8,67 +8,16 @@ from dask.distributed import Client, progress
 from dask import delayed
 import glob
 
-def xml_file_to_data_dict(file_name):
-    xml_file = open(file_name)
-    data_dict = xmltodict.parse(xml_file.read(),
-                                dict_constructor=dict)
-    xml_file.close()
-    return data_dict
-
-def parse_data(file_name):
-    raise NotImplementedError('A more specific parser is needed')
-
-def get_country(file_name):
-    split = file_name.split('/')
-    return split[-2]
-
-def parse_general_data(file_name, key1, key2):
-    data_dict = xml_file_to_data_dict(file_name)
-    temp = data_dict.get(key1)
-
-    if not temp:
-        return []
-
-    temp = temp.get(key2)
-    if not temp:
-        return []
-
-    if type(temp) != list:
-        temp = [temp]
-
-    country = get_country(file_name)
-    for t in temp:
-        t['country'] = country
-        t['source_xml'] = file_name
-    return temp
-
-def parse_showings_data(file_name):
-    # DEBUG
-    # print(file_name)
-    return parse_general_data(file_name, 'times', 'showtime')
-
-def parse_movies_data(file_name):
-    # DEBUG
-    # print(file_name)
-    return parse_general_data(file_name, 'movies', 'movie')
-
-def parse_theaters_data(file_name):
-    # DEBUG
-    # print(file_name)
-    return parse_general_data(file_name, 'houses', 'theater')
-
 class BagReader:
     DEFAULT_CPUS = 4
-    PARSER = "parse_data"
     FILE_PATTERN = None
 
-    def __init__(self, directory_pattern, is_xml=False):
+    def __init__(self, directory_pattern):
         if not self.FILE_PATTERN:
             raise NotImplementedError('A file pattern is needed')
 
         self.pattern = "{}/{}".format(directory_pattern,
                                       self.FILE_PATTERN)
-        self.is_xml = is_xml
         self.initialize_properties()
 
     def initialize_properties(self):
@@ -128,18 +77,6 @@ class BagReader:
 
         self.client
 
-        if self.is_xml:
-            return self.xml_bag()
-
-        return self.json_bag()
-
-    def xml_bag(self):
-        parser = eval(self.PARSER)
-        delayed_files = [delayed(parser)(fn) for fn in self.files]
-        self._bag = db.from_delayed(delayed_files)
-        return self._bag
-
-    def json_bag(self):
         self._bag = db.read_text(self.pattern).map(json.loads)
         return self._bag
 
@@ -168,18 +105,12 @@ class BagReader:
         self.client.close()
 
 class ShowingsReader(BagReader):
-    PARSER = "parse_showings_data"
     FILE_PATTERN = "*S.*"
 
 class MoviesReader(BagReader):
-    PARSER = "parse_movies_data"
     FILE_PATTERN = "*I.*"
 
 class TheatersReader(BagReader):
-    # This Canadian would prefer "Theatres
+    # This Canadian would prefer "Theatres"
     # (but we stay consistent with the data)
-    PARSER = "parse_theaters_data"
     FILE_PATTERN = "*T.*"
-
-if __name__ == "__main__":
-    movie_reader = MovieReader('data/*/*/*S.*')
