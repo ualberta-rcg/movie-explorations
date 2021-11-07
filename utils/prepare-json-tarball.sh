@@ -28,7 +28,7 @@ SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 source $SCRIPT_DIR/make-and-activate-venv.sh
 
-PYTHON_DIR="$SCRIPT_DIR/../dask_bag"
+PYTHON_DIR="$SCRIPT_DIR/../movies_dask_bag"
 INPUT_DIR="$SLURM_TMPDIR/xml"
 INPUT_DIR_TXT='$SLURM_TMPDIR/xml'
 
