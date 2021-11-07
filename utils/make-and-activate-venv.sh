@@ -19,4 +19,4 @@ fi
 
 source $VENV/bin/activate
 
-pip install --no-index xmltodict shapely jupyter dask distributed pandas plotly
+pip install --no-index xmltodict shapely jupyter dask distributed pandas plotly bokeh

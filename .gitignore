@@ -3,6 +3,7 @@ venv
 VENV
 tmp
 movies_*.tar*
+core.*
 task-list.txt
 __pycache__
 dask-worker-space

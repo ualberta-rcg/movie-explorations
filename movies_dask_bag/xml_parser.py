@@ -15,6 +15,9 @@ class XMLParser:
     def initialize_properties(self):
         self._records = None
         self._parse = None
+        self._country = None
+        self._date_stamp = None
+        self._source_xml = None
 
     def xml_file_to_dict(self):
         xml_file = open(self.input_xml, "rb")
@@ -63,15 +66,41 @@ class XMLParser:
         if type(temp) != list:
             temp = [temp]
 
-        country = self.get_country()
         for t in temp:
-            t['country'] = country
-            t['source_xml'] = self.input_xml
+            t['country'] = self.country
+            t['date_stamp'] = self.date_stamp
+            t['source_xml'] = self.source_xml
         return temp
 
-    def get_country(self):
+    @ property
+    def country(self):
+        if self._country:
+            return self._country
+
         split = self.input_xml.split('/')
-        return split[-2]
+        self._country = split[-2]
+
+        return self._country
+
+    @property
+    def date_stamp(self):
+        if self._date_stamp:
+            return self._date_stamp
+
+        split = self.input_xml.split('/')
+        self._date_stamp = split[-3]
+
+        return self._date_stamp
+
+    @property
+    def source_xml(self):
+        if self._source_xml:
+            return self._source_xml
+
+        split = self.input_xml.split('/')
+        self._source_xml = "/".join(split[-3:])
+
+        return self._source_xml
 
     def parse_showings_data(self):
         return self.parse_general_data('times', 'showtime')
