@@ -162,16 +162,22 @@ class BagReader:
     def num_movies(self):
         return len(self.movie_ids())
 
+    def remove_bag_files(self):
+        for file_name in self.bag_files:
+            if os.path.exists(file_name):
+                os.remove(file_name)
+
     def shutdown(self):
         self.client.close()
+        self.remove_bag_files()
 
 class ShowingsReader(BagReader):
-    FILE_PATTERN = "*S.*"
+    FILE_PATTERN = "*S.json"
 
 class MoviesReader(BagReader):
-    FILE_PATTERN = "*I.*"
+    FILE_PATTERN = "*I.json"
 
 class TheatersReader(BagReader):
     # This Canadian would prefer "Theatres"
     # (but we stay consistent with the data)
-    FILE_PATTERN = "*T.*"
+    FILE_PATTERN = "*T.json"
