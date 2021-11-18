@@ -14,19 +14,7 @@ we'll first look at modeling the data with a `dask.bag` (or more specifically, t
 
 The data is held in XML files, archived as zip files with the general directory
 layout of `[DATE_STAMP]/movies_[COUNTRY_CODE].zip` (e.g., `20191206/movies_can.zip`).
-In general, Dask bags prefer data that is in XML format, with one record per line.
-
-
-To facilitate this analysis, there are three classes in the file
-`movies_dask_bag/movie_reader.py`:
-
-* `TheatersReader`
-* `MoviesReader`
-* `ShowingsReader`
-
-There are all initialized with a directory pattern (a glob) of json files to
-look at, and the classes are the same, except that they are set up to
-look for the specific type of data they are named after.
+In general, Dask bags prefer data that is in JSON format, with one record per line.
 
 ## Storage
 
@@ -37,23 +25,36 @@ the use of the `$SLURM_TMPDIR` environment variable, which points to a
 directory on a local SSD drive that is reserved for use by the current job
 (if you aren't doing work on a job, this directory won't exist).
 
-## Jobs and sizes
+Some data preparation is needed to ensure things work, and are performant.
 
-`salloc --nodes=1 --tasks-per-node=1 --cpus-per-task=1 --mem-per-cpu=4000M --time=02:59:00`
-`salloc --nodes=1 --tasks-per-node=1 --cpus-per-task=6 --mem-per-cpu=4000M --time=02:59:00`
-`salloc --nodes=1 --tasks-per-node=1 --cpus-per-task=48 --mem-per-cpu=4000M --time=02:59:00`
+### Preparing data
 
-## Preparing data
+#### One-time activities
 
-### One-time activities
-* Extract XML from many zip files
+The goal here is to convert the data into a tarball containing a bunch of
+JSON files, matching the directory structure of the original data set.
+Once this tarball is created, it can be used for every job that processes
+the data.
+
+A couple of scripts assist with this task:
+
+* Extract XML from the many zip files
   * `utils/prepare-xml-tarball.sh`
   * Timing: TODO
 * Convert XML to JSON
   * `utils/prepare-json-tarball.sh`
+  * At this point we embellish each record with the following information:
+    * `country`: the three letter code that represents the country
+    * `date_stamp`: e.g., `20191206`
+    * `source_xml`: which file the record came from, e.g., `20191206/can/191206S.XML`
   * Timing: TODO
 
-## Per-job activites
+#### Per-job activites
+
+In order to process the data, we need to move it to the fast disk provisioned
+for the job. The Python virtual environment should also be on fast disk for
+optimal performance.
+
 * Move JSON tarball to fast disk
   * Timing: about a minute
 * Extract from archive on fast disk
@@ -64,3 +65,55 @@ directory on a local SSD drive that is reserved for use by the current job
 * If working with Jupyter, start Jupyter
   * `utils/launch-notebook.sh`
   * Instructions for launching an SSH tunnel provided
+
+The script `utils/run.sh` take care of all of these activities.
+
+## Code
+
+
+To facilitate this analysis, there are three classes in the file
+`movies_dask_bag/movie_reader.py`:
+
+* `TheatersReader`
+* `MoviesReader`
+* `ShowingsReader`
+
+These readers are responsible for:
+
+* Creating (if needed) the computational networks that will execute graphs
+* Chunking many files into one-file-per-worker (the number of works usually
+  matches the number of CPUs)
+* Creating a 'Dask Bag' to process the data
+* Cleaning up.
+
+A lot of the settings for these activities are auto-detected from Slurm
+environment variables.
+
+Each of these classes are initialized with a directory pattern (a glob) of json files to
+look at, but otherwise the classes are the same, except that they are set up to
+look for the specific type of data they are named after. An example of a
+glob that loads all of the data would look like:
+
+```
+work_dir = os.environ.get('SLURM_TMPDIR', '.')
+data_dir = '{}/json'.format(work_dir)
+file_pattern = '{}/*/*'.format(data_dir)
+```
+
+An example of looking at a single country (Canada) would look like:
+
+```
+file_pattern = '{}/*/deu'.format(data_dir)
+```
+
+An example that looks at a single 'date stamp` would look like:
+
+```
+file_pattern = '{}/20191206/*'.format(data_dir)
+```
+
+## Jobs and sizes
+
+`salloc --nodes=1 --tasks-per-node=1 --cpus-per-task=1 --mem-per-cpu=4000M --time=02:59:00`
+`salloc --nodes=1 --tasks-per-node=1 --cpus-per-task=6 --mem-per-cpu=4000M --time=02:59:00`
+`salloc --nodes=1 --tasks-per-node=1 --cpus-per-task=48 --mem-per-cpu=4000M --time=02:59:00`
