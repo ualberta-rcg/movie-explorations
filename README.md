@@ -40,14 +40,16 @@ A couple of scripts assist with this task:
 
 * Extract XML from the many zip files
   * `utils/prepare-xml-tarball.sh`
-  * Timing: TODO
+  * Runs in parallel
+  * Timing: 1 minute 15 seconds with 48 CPUs
 * Convert XML to JSON
   * `utils/prepare-json-tarball.sh`
   * At this point we embellish each record with the following information:
     * `country`: the three letter code that represents the country
     * `date_stamp`: e.g., `20191206`
     * `source_xml`: which file the record came from, e.g., `20191206/can/191206S.XML`
-  * Timing: TODO
+  * Runs in parallel
+  * Timing: 45 minutes with 48 CPUs
 
 #### Per-job activites
 

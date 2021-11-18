@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+# set -e
 
 # Assumption:
 #   Data is in XML files, with this general pattern:
@@ -35,13 +35,8 @@ INPUT_DIR_TXT='$SLURM_TMPDIR/xml'
 OUTPUT_DIR="$SLURM_TMPDIR/json"
 OUTPUT_DIR_TXT='$SLURM_TMPDIR/json'
 
-TASK_FILE="$SLURM_TMPDIR/task-list.txt"
 XML_FILES=`ls $INPUT_DIR/*/*/*.XML`
 
-# Empty contents of task file
-> $TASK_FILE
-
-# Make list of tasks ...
 for input_file in $XML_FILES; do
     input_file_txt=`echo $input_file | \
                     sed "s:$INPUT_DIR:$INPUT_DIR_TXT:"`
@@ -56,13 +51,10 @@ for input_file in $XML_FILES; do
 
     echo "echo $output_file_txt; \
           mkdir -p $output_dir_txt; \
-          python $PYTHON_DIR/xml_parser.py $input_file_txt -o $output_file_txt" \
-          >> $TASK_FILE
-done
+          python $PYTHON_DIR/xml_parser.py $input_file_txt -o $output_file_txt"
+done | parallel
 
-# Run tasks in parallel
-
-parallel < $TASK_FILE
+echo "Archiving"
 
 cd $SLURM_TMPDIR
-tar cvzf movies_json.tar.gz json
+tar cf movies_json.tar json
